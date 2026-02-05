@@ -14,11 +14,10 @@ import hashlib
 import json
 from pathlib import Path
 
-import requests
-
 # Optional but strongly recommended for huge JSON arrays:
 # pip install ijson
 import ijson
+import requests
 
 
 def get_download_uri(session: requests.Session, bulk_type: str) -> str:
