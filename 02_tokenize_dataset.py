@@ -7,11 +7,7 @@ and saves a tokenized Arrow dataset to disk (fast to reload for training).
 
 Output dataset columns:
 - input_ids
-- attention_mask
-- labels (same as input_ids for causal LM)
 """
-
-from __future__ import annotations
 
 import argparse
 import itertools
@@ -74,9 +70,8 @@ def main():
         if args.add_eos:
             # Add EOS token between examples so the model sees clear boundaries.
             enc["input_ids"] = [ids + [eos_id] for ids in enc["input_ids"]]
-            enc["attention_mask"] = [mask + [1] for mask in enc["attention_mask"]]
 
-        return enc
+        return {"input_ids": enc["input_ids"]}
 
     tok_ds = ds.map(
         tok,
@@ -89,29 +84,21 @@ def main():
     def pack(batch):
         # Concatenate across the batch
         input_ids = list(itertools.chain.from_iterable(batch["input_ids"]))
-        attn = list(itertools.chain.from_iterable(batch["attention_mask"]))
 
         # Drop remainder to make exact blocks
         total_length = len(input_ids)
         total_length = (total_length // args.block_size) * args.block_size
 
         input_ids = input_ids[:total_length]
-        attn = attn[:total_length]
 
         # Split into blocks
         input_blocks = [
             input_ids[i : i + args.block_size]
             for i in range(0, total_length, args.block_size)
         ]
-        attn_blocks = [
-            attn[i : i + args.block_size]
-            for i in range(0, total_length, args.block_size)
-        ]
 
         return {
             "input_ids": input_blocks,
-            "attention_mask": attn_blocks,
-            "labels": input_blocks.copy(),  # causal LM labels
         }
 
     packed_ds = tok_ds.map(

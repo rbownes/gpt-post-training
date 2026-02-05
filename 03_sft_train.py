@@ -5,11 +5,9 @@
 Loads the tokenized dataset from save_to_disk and runs SFT as standard
 causal language modeling fine-tuning using 🤗 Transformers Trainer.
 
-Assumes dataset has: input_ids, attention_mask (and optionally others).
-We create labels = input_ids via DataCollatorForLanguageModeling(mlm=False).
+Assumes dataset has: input_ids.
+Labels are created automatically via DataCollatorForLanguageModeling(mlm=False).
 """
-
-from __future__ import annotations
 
 import argparse
 
@@ -20,7 +18,7 @@ from datasets import load_from_disk
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    default_data_collator,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
 )
@@ -55,6 +53,12 @@ def main():
     )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--eval-steps", type=int, default=250)
+    p.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help='Resume from checkpoint path, or "latest" to auto-detect the last checkpoint.',
+    )
     args = p.parse_args()
 
     ds = load_from_disk(args.dataset)
@@ -72,7 +76,7 @@ def main():
 
     model = AutoModelForCausalLM.from_pretrained(args.model)
 
-    collator = default_data_collator
+    collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     # Good defaults for modern setups; Trainer will pick fp16/bf16 depending on hardware if you enable it.
     # We'll enable bf16 if supported, else fp16 if CUDA, else neither.
     use_cuda = torch.cuda.is_available()
@@ -118,7 +122,10 @@ def main():
         processing_class=tokenizer,
     )
 
-    trainer.train()
+    resume = args.resume
+    if resume == "latest":
+        resume = True
+    trainer.train(resume_from_checkpoint=resume)
     trainer.save_model(args.out)
     tokenizer.save_pretrained(args.out)
     print(f"Saved final model -> {args.out}")

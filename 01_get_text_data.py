@@ -9,8 +9,6 @@ Output format (JSONL):
 {"text": "...", "oracle_id": "..."}
 """
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
@@ -83,9 +81,7 @@ def write_flavor_jsonl(
 ) -> None:
     out_jsonl.parent.mkdir(parents=True, exist_ok=True)
 
-    seen_text = set()
-    seen_oracle = set()
-    seen_pair = set()
+    seen = set()
 
     kept = 0
     total = 0
@@ -105,22 +101,22 @@ def write_flavor_jsonl(
 
             if dedupe == "text":
                 k = stable_text_key(ft)
-                if k in seen_text:
+                if k in seen:
                     continue
-                seen_text.add(k)
+                seen.add(k)
 
             elif dedupe == "oracle_id":
-                if not oid or oid in seen_oracle:
+                if not oid or oid in seen:
                     continue
-                seen_oracle.add(oid)
+                seen.add(oid)
 
             elif dedupe == "pair":
                 if not oid:
                     continue
                 k = (oid, stable_text_key(ft))
-                if k in seen_pair:
+                if k in seen:
                     continue
-                seen_pair.add(k)
+                seen.add(k)
 
             else:
                 raise ValueError("dedupe must be one of: text, oracle_id, pair")
